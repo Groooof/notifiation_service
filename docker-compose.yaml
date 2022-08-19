@@ -1,32 +1,35 @@
 version: "3"
 
 volumes:
-  postgres_data:
+  pgdata:
 
 services:
-  notification_service:
-    restart: always
-    container_name: notification_service
-    build: .
-    ports:
-      - '8000:8000'
-    env_file:
-      - .env
-    depends_on:
-      - postgres
-      - pgadmin
-    volumes:
-      - .:/usr/src/app
+#  notification_service:
+#    restart: always
+#    container_name: notification_service
+#    build: .
+#    ports:
+#      - '8000:8000'
+#    depends_on:
+#      - postgres
+#      - pgadmin
+#    volumes:
+#      - .:/code
+#    environment:
+#      - PYTHONPATH=/code
   postgres:
     restart: always
     container_name: postgres_container
     image: postgres:latest
-    expose:
-      - 5432
+#    expose:
+#      - 5432
+    ports:
+      - '5555:5432'
     env_file:
-      - .env
+      - ./core/storage/.env
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+#      - ./core/storage/init.sql:/docker-entrypoint-initdb.d/init.sql
   pgadmin:
     container_name: pgadmin4_container
     image: dpage/pgadmin4
