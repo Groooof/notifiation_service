@@ -4,25 +4,25 @@ volumes:
   pgdata:
 
 services:
-#  notification_service:
-#    restart: always
-#    container_name: notification_service
-#    build: .
-#    ports:
-#      - '8000:8000'
-#    depends_on:
-#      - postgres
-#      - pgadmin
-#    volumes:
-#      - .:/code
-#    environment:
-#      - PYTHONPATH=/code
+  notification_service:
+    restart: always
+    container_name: notification_service
+    build: .
+    ports:
+      - '8000:8000'
+    depends_on:
+      - postgres
+      - pgadmin
+    volumes:
+      - .:/code
+    environment:
+      - PYTHONPATH=/code
   postgres:
     restart: always
     container_name: postgres_container
     image: postgres:latest
-#    expose:
-#      - 5432
+    expose:
+      - 5432
     ports:
       - '5555:5432'
     env_file:

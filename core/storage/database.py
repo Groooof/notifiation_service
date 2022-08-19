@@ -23,7 +23,7 @@ class IDatabase:
         pass
 
     @abstractmethod
-    def _get_dsn(self, host: str, port: str, user: str, password: str, database: str) -> str:
+    def get_dsn(self, host: str, port: str, user: str, password: str, database: str) -> str:
         pass
 
 
@@ -46,7 +46,7 @@ class ASPGDatabase(IDatabase):
         finally:
             await self.pool.release(con)
 
-    def _get_dsn(self, host: str, port: str, user: str, password: str, database: str) -> str:
+    def get_dsn(self, host: str, port: str, user: str, password: str, database: str) -> str:
         return f'postgres://{user}:{password}@{host}:{port}/{database}'
 
 
@@ -58,7 +58,7 @@ class ASSADatabase(IDatabase):
         self.engine: tp.Optional[as_sa.AsyncEngine] = None
 
     def on_startup(self, host: str, port: str, user: str, password: str, database: str) -> None:
-        dsn = self._get_dsn(host, port, user, password, database)
+        dsn = self.get_dsn(host, port, user, password, database)
         self.engine = as_sa.create_async_engine(dsn, poolclass=AsyncAdaptedQueuePool, pool_size=5, max_overflow=0)
 
     def on_shutdown(self) -> None:
@@ -73,8 +73,9 @@ class ASSADatabase(IDatabase):
         finally:
             await con.close()
 
-    def _get_dsn(self, host, port, user, password, database) -> str:
-        return f'{self.default_driver}+{self.default_dialect}://{user}:{password}@{host}:{port}/{database}'
+    @classmethod
+    def get_dsn(cls, host, port, user, password, database) -> str:
+        return f'{cls.default_driver}+{cls.default_dialect}://{user}:{password}@{host}:{port}/{database}'
 
 
 database = ASSADatabase()
