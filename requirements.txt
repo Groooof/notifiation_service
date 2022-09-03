@@ -2,4 +2,7 @@ fastapi[all]==0.79.0
 pydantic==1.9.1
 asyncpg==0.26.0
 sqlalchemy==1.4.40
+sqlalchemy-utils==0.38.3
 alembic==1.8.1
+psycopg2==2.9.3
+

@@ -1,7 +1,6 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from v1.routers import router
 from core.storage.database import database
-from asyncpg import Connection
 from core.settings import settings as cfg
 
 
@@ -20,7 +19,7 @@ app = get_app()
 
 
 @app.on_event('startup')
-async def startup():
+async def on_startup():
     await database.on_startup(host=cfg.POSTGRES_HOST,
                               user=cfg.POSTGRES_USER,
                               password=cfg.POSTGRES_PASSWORD,
@@ -29,7 +28,7 @@ async def startup():
 
 
 @app.on_event('shutdown')
-async def shutdown():
+async def on_shutdown():
     await database.on_shutdown()
 
 

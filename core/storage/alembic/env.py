@@ -1,14 +1,14 @@
-import asyncio
 from logging.config import fileConfig
 
+import sqlalchemy
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import AsyncEngine
 
 from alembic import context
+from sqlalchemy_utils import register_composites
 
-
+# this is the Alembic Config object, which provides
+# access to the values within the .ini file in use.
 config = context.config
 
 # Interpret the config file for Python logging.
@@ -16,26 +16,26 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-
-from core.storage.models import Base
+# add your model's MetaData object here
+# for 'autogenerate' support
+# from myapp import mymodel
+# target_metadata = mymodel.Base.metadata
+from core.storage.models import meta
 from core.settings import settings as cfg
 
-target_metadata = Base.metadata
+target_metadata = meta
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-from core.storage.database import ASSADatabase
+dsn = f'postgresql+psycopg2://{cfg.POSTGRES_USER}:{cfg.POSTGRES_PASSWORD}@{cfg.POSTGRES_HOST}:{cfg.POSTGRES_PORT}/{cfg.POSTGRES_DB}'
 
-dsn = ASSADatabase.get_dsn(cfg.POSTGRES_HOST, cfg.POSTGRES_PORT, cfg.POSTGRES_USER, cfg.POSTGRES_PASSWORD,
-                           cfg.POSTGRES_DB)
-config.set_main_option('sqlalchemy.url', cfg.POSTGRES_DSN)
+config.set_main_option('sqlalchemy.url', dsn)
 
 
 def run_migrations_offline() -> None:
-    print(20*'*')
     """Run migrations in 'offline' mode.
 
     This configures the context with just a URL
@@ -47,14 +47,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    import os
-    pg_user = os.environ.get('POSTGRES_USER')
-    pg_password = os.environ.get('POSTGRES_PASSWORD')
-    pg_host = os.environ.get('POSTGRES_HOST')
-    pg_port = os.environ.get('POSTGRES_PORT')
-    pg_db = os.environ.get('POSTGRES_DB')
-    pg_dsn = f'postgres://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_db}'
-    url = config.get_main_option(pg_dsn)
+    url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -66,37 +59,33 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
-
-    with context.begin_transaction():
-        context.run_migrations()
-
-
-async def run_migrations_online() -> None:
+def run_migrations_online() -> None:
     """Run migrations in 'online' mode.
 
     In this scenario we need to create an Engine
     and associate a connection with the context.
 
     """
-
-    url = config.get_main_option('sqlalchemy.url')
-    connectable = AsyncEngine(url,
-            engine_from_config(
-            config.get_section(config.config_ini_section),
-            prefix="sqlalchemy.",
-            poolclass=pool.NullPool,
-            future=True
-            )
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
     )
 
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
+    with connectable.connect() as connection:
+        context.configure(
+            connection=connection, target_metadata=target_metadata
+        )
 
-    await connectable.dispose()
+        with context.begin_transaction():
+            context.run_migrations()
+
+    # engine = sqlalchemy.create_engine(dsn)
+    # with engine.connect() as con:
+    #     register_composites(con)
+
 
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    asyncio.run(run_migrations_online())
+    run_migrations_online()

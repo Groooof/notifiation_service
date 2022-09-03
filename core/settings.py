@@ -7,12 +7,11 @@ class Settings(pd.BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_PORT: str
-    POSTGRES_DSN: str
+    SENDER_TOKEN: str
 
     class Config:
-        env_file = './core/storage/.env'
+        env_file = './core/.env'
         env_file_encoding = 'utf-8'
 
 
 settings = Settings()
-

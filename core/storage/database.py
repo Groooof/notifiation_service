@@ -5,21 +5,23 @@ from contextlib import asynccontextmanager, contextmanager
 import sqlalchemy.ext.asyncio as as_sa
 from abc import ABCMeta, abstractmethod
 from sqlalchemy.pool import AsyncAdaptedQueuePool
+import sqlalchemy as sa
+import core.storage.models as md
 
 
 class IDatabase:
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def on_startup(self, host: str, port: str, user: str, password: str, database: str) -> None:
+    async def on_startup(self, host: str, port: str, user: str, password: str, database: str) -> None:
         pass
 
     @abstractmethod
-    def on_shutdown(self) -> None:
+    async def on_shutdown(self) -> None:
         pass
 
     @abstractmethod
-    def connection(self):
+    async def connection(self):
         pass
 
     @abstractmethod
@@ -57,19 +59,22 @@ class ASSADatabase(IDatabase):
     def __init__(self):
         self.engine: tp.Optional[as_sa.AsyncEngine] = None
 
-    def on_startup(self, host: str, port: str, user: str, password: str, database: str) -> None:
+    async def on_startup(self, host: str, port: str, user: str, password: str, database: str) -> None:
         dsn = self.get_dsn(host, port, user, password, database)
         self.engine = as_sa.create_async_engine(dsn, poolclass=AsyncAdaptedQueuePool, pool_size=5, max_overflow=0)
 
-    def on_shutdown(self) -> None:
+    async def on_shutdown(self) -> None:
         pass
 
-    def connection(self) -> as_sa.AsyncConnection:
+    async def connection(self) -> as_sa.AsyncConnection:
         if self.engine is None:
             raise NotImplementedError('Engine must be created first')
         con = await self.engine.connect()
         try:
             yield con
+            await con.commit()
+        except Exception as ex:
+            con.rollback()
         finally:
             await con.close()
 
@@ -79,83 +84,22 @@ class ASSADatabase(IDatabase):
 
 
 database = ASSADatabase()
-
-
-from core.settings import settings as cfg
-
-
-import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-from sqlalchemy import event
-from timeit import default_timer
-
-# engine = sa.create_engine('sqlite:///:memory:')
-# engine = as_sa.create_async_engine(cfg.POSTGRES_DSN, poolclass=AsyncAdaptedQueuePool, pool_size=5, max_overflow=0)
-# meta = sa.MetaData()
-
-
-# queries = [
-#     sa.select(i+1) for i in range(700)
-# ]
-
-
-# @event.listens_for(engine.sync_engine, "connect")
-# def my_on_connect(dbapi_con, connection_record):
-#     print("New DBAPI connection:", dbapi_con)
-
-
-# async def exec(query):
-#     async with engine.connect() as con:
-#         res = await con.execute(query)
-#         return res.fetchone()[0]
+# database = ASPGDatabase()
 #
 #
 # async def main():
-#     # database = Database()
-#     # await database.create_pool(host=cfg.POSTGRES_HOST,
-#     #                            user=cfg.POSTGRES_USER,
-#     #                            password=cfg.POSTGRES_PASSWORD,
-#     #                            database=cfg.POSTGRES_DB,
-#     #                            port=cfg.POSTGRES_PORT,
-#     #                            min_size=50,
-#     #                            max_size=50
-#     #                            )
-#     tasks = [exec(q) for q in queries]
-#     # tasks = [database.pool.fetch(f'SELECT {i+1}') for i in range(2100)]
-#     start = default_timer()
-#     res = await asyncio.gather(*tasks)
-#     [print(r, ',', end='') for r in res]
-#     end = default_timer()
-#     print(f'\nTime: {end-start}')
+#     await database.on_startup(host='localhost', port=5555, user='albert', password='root', database='notifications')
+#     await sa_database.on_startup(host='localhost', port=5555, user='albert', password='root', database='notifications')
 #
-#     # async with engine.begin() as con:
-#     #     tasks = [con.execute(q) for q in queries]
-#     #     res = await asyncio.gather(*tasks)
-#     #     # res = await con.execute(sa.select(1))
-#     #     [print(r.fetchone()) for r in res]
+#     async with asynccontextmanager(database.connection)() as con:
+#         res = await con.fetch('SELECT 1 as name')
+#         print(type(res[0]))
 #
+#     async with asynccontextmanager(sa_database.connection)() as con:
+#         res = (await con.execute(sa.select(md.mailings)))#.fetchall()
+#         print(type(res))
+#         print(res.first().filter)
+#         print(list(filter(lambda x: not x.startswith('_'), dir(res))))
+
+
 # asyncio.run(main())
-#
-#
-# users = sa.Table('users', meta,
-#     sa.Column('id', sa.Integer, nullable=False, primary_key=True, default=int),
-#     sa.Column('name', sa.String, nullable=False),
-#     sa.Column('phone', sa.String, nullable=False)
-# )
-#
-# #meta.create_all(engine)
-#
-# q1 = users.insert().values(id=1, name='Ffs', phone='123')
-# q2 = sa.select(users).where(users.c.id.in_((1, 2, 3)))
-#
-# # with engine.connect() as con:
-# #     with con.begin():
-# #         r1 = con.execute(q1)
-# #         r2 = con.execute(q2)
-# #
-# # # for r in r1:
-# # #     print(r)
-# # for r in r2:
-# #     print(r)
-
-
