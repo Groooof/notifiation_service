@@ -11,8 +11,7 @@ import typing as tp
 class FixedJSONResponse(JSONResponse):
     def render(self, content: tp.Any) -> bytes:
         resp = {'content': content,
-                'code': self.status_code,
-                '4len': 'konya'}
+                'code': self.status_code}
         return super().render(resp)
 
 
